@@ -5,7 +5,6 @@ from urllib.parse import urlparse, urljoin
 import time
 import json
 import os
-import random
 
 def verificar_permissao(url_alvo, agente):
     analise = urlparse(url_alvo)
@@ -17,23 +16,21 @@ def verificar_permissao(url_alvo, agente):
         leitor_robots.read()
         return leitor_robots.can_fetch(agente, url_alvo)
     except:
-        return True
+        return False
 
-def crawler_web(url_semente, limite_paginas):
+def crawler(url_inicial, max_paginas):
     meu_agente = "CrawlerBot"
     cabecalhos = {"User-Agent": meu_agente}
     
     historico = set()
-    pendentes = [url_semente]
+    pendentes = [url_inicial]
     
     dados_extraidos = []
-    registo_falhas = []
-    mapa_conexoes = {} 
 
     print("--- INFO: Usa 'Ctrl + C' para encerrar e exportar os resultados ---")
 
     try:
-        while pendentes and len(historico) < limite_paginas:
+        while pendentes and len(dados_extraidos) < max_paginas:
             url_atual = pendentes.pop(0)
             
             if url_atual in historico:
@@ -41,8 +38,8 @@ def crawler_web(url_semente, limite_paginas):
                 
             historico.add(url_atual)
 
-            total_progresso = "ILIMITADO" if limite_paginas == float('inf') else limite_paginas
-            print(f"-> [{len(historico)}/{total_progresso}] Processando: {url_atual}")
+            total_progresso = "ILIMITADO" if max_paginas == float('inf') else max_paginas
+            print(f"-> [{len(dados_extraidos) + 1}/{total_progresso}] Processando: {url_atual}")
             
             if not verificar_permissao(url_atual, meu_agente):
                 print(f"   [!] Bloqueado por diretiva robots.txt")
@@ -52,62 +49,60 @@ def crawler_web(url_semente, limite_paginas):
                 web_res = requests.get(url_atual, headers=cabecalhos, timeout=7)
                 
                 if web_res.status_code != 200:
-                    registo_falhas.append({
-                        "link": url_atual,
-                        "codigo": web_res.status_code,
-                        "mensagem": web_res.reason
-                    })
                     continue
 
                 sopa_html = BeautifulSoup(web_res.text, 'html.parser')
-                titulo_pag = sopa_html.title.string.strip() if sopa_html.title else "Título Indisponível"
-                
-                links_locais = []
-                for tag_a in sopa_html.find_all('a', href=True):
-                    link_absoluto = urljoin(url_atual, tag_a['href'])
-                    
-                    if link_absoluto.startswith('http'):
-                        links_locais.append(link_absoluto)
-                        if link_absoluto not in historico and link_absoluto not in pendentes:
-                            pendentes.append(link_absoluto)
+                if sopa_html.title and sopa_html.title.string:
+                    titulo_pag = sopa_html.title.string.strip()
+                else:
+                    titulo_pag = "Título Indisponível"
 
-                mapa_conexoes[url_atual] = list(set(links_locais)) 
+                links_locais = extrair_links_da_pagina(sopa_html, url_atual, historico, pendentes)
 
                 dados_extraidos.append({
-                    "origem": url_atual,
-                    "nome_pagina": titulo_pag,
-                    "qtd_links": len(links_locais),
-                    "referencias": links_locais
+                    "url": url_atual,
+                    "titulo": titulo_pag,
+                    "links": links_locais
                 })
 
             except requests.exceptions.RequestException as erro:
-                registo_falhas.append({
-                    "link": url_atual,
-                    "codigo": "Falha de Rede",
-                    "detalhe": str(erro)
-                })
+                print(f"   [!] Falha de rede: {erro}")
 
-            time.sleep(random.uniform(1.2, 3.0))
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("\n\n[PARAGEM FORÇADA] A preparar exportação")
 
-    site_nome = urlparse(url_semente).netloc or "extraido"
+    site_nome = urlparse(url_inicial).netloc or "extraido"
     caminho_base = os.path.dirname(os.path.abspath(__file__))
     pasta_final = os.path.join(caminho_base, f"dump_{site_nome}")
 
     os.makedirs(pasta_final, exist_ok=True)
 
-    def salvar_json(nome, conteudo):
-        with open(os.path.join(pasta_final, nome), 'w', encoding='utf-8') as f:
-            json.dump(conteudo, f, ensure_ascii=False, indent=4)
-
-    salvar_json('sucesso.json', dados_extraidos)
-    salvar_json('erros.json', registo_falhas)
-    salvar_json('mapa_relacoes.json', mapa_conexoes)
+    caminho_json = os.path.join(pasta_final, 'resultado.json')
+    with open(caminho_json, 'w', encoding='utf-8') as ficheiro:
+        json.dump(dados_extraidos, ficheiro, ensure_ascii=False, indent=4)
 
     print(f"\n--- OPERAÇÃO FINALIZADA ---")
-    print(f"Os relatórios foram gerados em: {pasta_final}")
+    print(f"O ficheiro JSON foi gerado em: {caminho_json}")
+
+
+def extrair_links_da_pagina(sopa_html, url_atual, historico, pendentes):
+    links_locais = []
+
+    for tag_a in sopa_html.find_all('a', href=True):
+        link_absoluto = urljoin(url_atual, tag_a['href'])
+
+        if not link_absoluto.startswith('http'):
+            continue
+
+        if link_absoluto not in links_locais:
+            links_locais.append(link_absoluto)
+
+        if link_absoluto not in historico and link_absoluto not in pendentes:
+            pendentes.append(link_absoluto)
+
+    return links_locais
 
 if __name__ == "__main__":
     print("=== CRAWLER ===")
@@ -130,4 +125,4 @@ if __name__ == "__main__":
             limite = 10
             print("Entrada inválida. Limite definido para 10.")
 
-    crawler_web(entrada_url, limite)
+    crawler(entrada_url, limite)
