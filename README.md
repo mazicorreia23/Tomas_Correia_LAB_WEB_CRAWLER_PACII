@@ -15,12 +15,34 @@ Para correr este script, é necessário ter o Python instalado e as seguintes bi
 
 * `requests`: Para realizar os pedidos HTTP.
 * `beautifulsoup4`: Para processar o HTML das páginas.
-* 
 
-## Estrutura dos ficheiros de saída
+**Requisitos**
 
-Após a execução, serão gerados três ficheiros na pasta de destino:
+- Python 3.8+
+- Bibliotecas: `requests`, `beautifulsoup4`
 
-* **sucesso.json** : Contém o URL, o título e a lista de links encontrados em cada página visitada com sucesso.
-* **erros.json** : Registo de páginas que não puderam ser acedidas, incluindo o código de erro ou falha de rede.
-* **mapa_relacoes.json** : Um mapa simplificado que liga cada URL visitada a todos os links que ela contém.
+Instalação rápida:
+
+```bash
+python -m pip install --user requests beautifulsoup4
+```
+
+**Como executar**
+
+1. Abrir um terminal na pasta do projeto.
+2. Executar:
+
+```bash
+python Crawler.py
+```
+
+Seguir as prompts para inserir a `URL de partida` e o limite de páginas (ou escolher modo ilimitado).
+
+**O que o crawler faz**
+
+- Respeita `robots.txt` (se não for possível ler, não procede).
+- Identifica-se com o User-Agent `CrawlerBot`.
+- Evita visitar a mesma página duas vezes.
+- Extrai o título da página e todos os links (`<a href>`).
+- Introduz um `sleep` de 1 segundo entre pedidos para não sobrecarregar o servidor.
+- Guarda os resultados em JSON em: `dump_<site>/resultado.json` (por exemplo `dump_example.com/resultado.json`).
