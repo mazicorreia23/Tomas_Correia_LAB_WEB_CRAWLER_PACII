@@ -1,0 +1,6 @@
+1.	Porque é importante respeitar o robots.txt? 
+Para não acedermos a páginas proibidas, mantermos um bom comportamento ético e não sobrecarregarmos o servidor. 
+2.	O que pode acontecer se um crawler for mal implementado? 
+Pode mandar o site abaixo por o sobrecarregar ou até mesmo fazer com que o site bloqueie o IP do crawler por motivos de segurança.
+3.	Qual a diferença entre crawling e scraping?
+A diferença entre crawling e scraping é que o crawling consiste em explorar as diferentes páginas e os links associados a elas, enquanto o scraping consiste em recolher informação dentro dessas páginas.
